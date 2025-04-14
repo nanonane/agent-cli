@@ -4,14 +4,20 @@ import json
 import sys
 import subprocess
 
-url = "<URL>"
-api_key = "<API Key>"
+
+# Load configuration from config.json
+with open("config.json", "r") as file:
+    config = json.load(file)
+
+url = config["url"]  # LLM API URL
+api_key = config["api_key"]  # API key
+chat_model = config["chat_model"]  # name of the chat model
+reasoner_model = config["reasoner_model"]  # name of the reasoning model
+
 headers = {
     "Authorization": f"Bearer {api_key}",
     "Content-Type": "application/json",
 }
-chat_model = "<Chat Model>"
-reasoner_model = "<Reasoner Model>"
 
 
 def get_response(model: str, messages: list) -> str:
@@ -24,9 +30,15 @@ def get_response(model: str, messages: list) -> str:
 
     if response.status_code == 200:
         result = response.json()
-        reply = result["choices"][0]["message"]["content"]
-        print(reply)
-        return reply
+        if model == reasoner_model:
+            reasoning_content = result["choices"][0]["message"]["reasoning"]
+            print("\n----- Reasoning -----\n")
+            print(reasoning_content)
+            print("\n----- End of Reasoning -----\n")
+            sys.stdout.flush()
+        content = result["choices"][0]["message"]["content"]
+        print(content)
+        return content
     else:
         raise Exception(f"Request fail: {response.status_code} {response.text}")
 
@@ -43,10 +55,10 @@ def get_stream_response(model: str, messages: list):
             raise Exception(f"Request failed: {response.status_code} {response.text}")
 
         reply = ""
-        
+
         reasoning = (model == reasoner_model)
         if reasoning:
-            print("----- Reasoning -----")
+            print("\n----- Reasoning -----\n")
             sys.stdout.flush()
 
         for line in response.iter_lines():
@@ -60,16 +72,17 @@ def get_stream_response(model: str, messages: list):
                         reasoning_content = delta.get("reasoning")
                         sys.stdout.write(reasoning_content)
                         sys.stdout.flush()
+                        continue
 
                     content = delta.get("content", "")
-                    if reasoning and content != "":  # start of answer content
+                    if reasoning and content:  # start of answer content
                         reasoning = False
                         print('\n----- End of Reasoning -----\n')
                         sys.stdout.flush()
                     sys.stdout.write(content)
                     sys.stdout.flush()
                     reply += content
-                except Exception as e:  # in case content is None
+                except Exception:  # in case content is None
                     continue
         return reply
 
@@ -121,7 +134,7 @@ def main():
             break
         messages.append({"role": "user", "content": request})
 
-        print(f"🤖{model}")
+        print(f"🤖 {model}")
         try:
             reply = get_stream_response(model, messages)
             print()
