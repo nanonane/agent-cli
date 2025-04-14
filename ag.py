@@ -2,11 +2,14 @@ import argparse
 import requests
 import json
 import sys
+import os
+from pathlib import Path
 import subprocess
 
 
 # Load configuration from config.json
-with open("config.json", "r") as file:
+ag_path = os.getenv("AG_PATH", "~/agent-cli")
+with open(Path(ag_path, "config.json"), "r") as file:
     config = json.load(file)
 
 url = config["url"]  # LLM API URL

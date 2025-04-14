@@ -1,3 +1,4 @@
 #!/bin/bash
-source ~/agent-cli/venv/bin/activate
-python ~/agent-cli/ag.py "$@"
+export AG_PATH=$(dirname "$(realpath "$0")")
+source "$AG_PATH/venv/bin/activate"
+python "$AG_PATH/ag.py" "$@"
