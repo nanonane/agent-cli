@@ -5,6 +5,9 @@ import sys
 import os
 from pathlib import Path
 import subprocess
+from typing import Optional
+import threading
+import time
 
 
 # Load configuration from config.json
@@ -90,7 +93,7 @@ def get_stream_response(model: str, messages: list):
         return reply
 
 
-def get_user_input() -> str:
+def get_user_input() -> Optional[str]:
     """
     Get user input from stdin until one empty line are entered.
     """
@@ -111,18 +114,59 @@ def get_user_input() -> str:
     return request
 
 
+def execute_shell_command(command: str) -> Optional[str]:
+    """
+    Execute a shell command in zsh and return the output.
+    """
+    try:
+        # Remove the leading '!' from the command
+        cmd = command[1:].strip()
+        if not cmd:
+            print("Error: Empty command")
+            return None
+        
+        # Execute the command in zsh
+        result = subprocess.run(
+            cmd,
+            shell=True,
+            executable="/bin/zsh",
+            capture_output=True,
+            text=True,
+            timeout=30  # 30 second timeout
+        )
+        
+        output = f"Command: {cmd}\n"
+        output += f"Exit code: {result.returncode}\n"
+        
+        if result.stdout:
+            output += f"Output:\n{result.stdout}"
+        
+        if result.stderr:
+            output += f"Error:\n{result.stderr}"
+            
+        return output
+        
+    except subprocess.TimeoutExpired:
+        print(f"Error: Command '{cmd}' timed out after 30 seconds")
+        return None
+    except Exception as e:
+        print(f"Error executing command: {str(e)}")
+        return None
+
+
 def main():
     parser = argparse.ArgumentParser(description="(LLM) AGent for everything (not really).")
     parser.add_argument("-c", "--cot", action="store_true", help="Use Chain of Thought (CoT) reasoning.")
     parser.add_argument("-q", "--query", help="Query stdin contents with argv.")
     parser.add_argument("-a", "--agent", action="store_true", help="Chat with agent (more powerful, but slower).")
     parser.add_argument("-r", "--revise", action="store_true", help="Revise the content; produces diff form.")
+    parser.add_argument("-g", "--grep", action="store_true", help="Grep for specific content from stdin.")
 
     args = parser.parse_args()
     # print(repr(args))
 
     model = reasoner_model if args.cot else chat_model
-    system_prompt = "You are a helpful assistant and a computer science expert."
+    system_prompt = "You are a helpful assistant and a computer science expert. Please always respond in Chinese."
     messages = [{"role": "system", "content": system_prompt}]
 
     # chat with agent
@@ -131,6 +175,22 @@ def main():
         request = get_user_input()
         if request is None:
             break
+
+        # Check if the request starts with '!' (shell command)
+        if request.startswith('!'):
+            print(f"🔧 Executing shell command: {request}")
+            command_output = execute_shell_command(request)
+            if command_output is None:
+                continue
+            print(command_output)
+            
+            # Add the command and its output to the conversation context
+            messages.append({"role": "user", "content": f"I executed the shell command: {request}\n\nOutput:\n{command_output}"})
+            
+            # Ask the user if they want to continue the conversation
+            print("\n(You can now ask questions about the command output, or enter another command)")
+            continue
+
         messages.append({"role": "user", "content": request})
 
         print(f"🤖 {model}")
