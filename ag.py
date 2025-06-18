@@ -92,19 +92,15 @@ def get_stream_response(model: str, messages: list):
 
 def get_user_input() -> str:
     """
-    Get user input from stdin until two consecutive empty lines are entered.
+    Get user input from stdin until one empty line are entered.
     """
     buffer, empty_count = [], 0
     while True:
         try:
             line = input()
-            buffer.append(line)
             if line.strip() == "":
-                empty_count += 1
-                if empty_count == 2:
-                    break
-            else:
-                empty_count = 0
+                break
+            buffer.append(line)
         except EOFError:
             return None
 
