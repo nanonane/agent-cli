@@ -18,7 +18,18 @@ To start the AI agent, run the following command in your terminal:
 python ag.py
 ```
 
-To run it with `ag` command, add the following line in your `~/.zshrc` (or `~/.bashrc`):
+You need to prepare a configuration file named `config.json` in the same directory as `ag.py`. The configuration file should contain the following structure:
+
+```json
+{
+  "url": "<URL>",
+  "api_key": "<API_KEY>",
+  "chat_model": "<CHAT_MODEL>",
+  "reasoner_model": "<REASONER_MODEL>"
+}
+```
+
+To run with `ag` command, add the following line in your `~/.zshrc` (or `~/.bashrc`):
 
 ```bash
 alias ag='/path/to/agent-cli/start.sh'
